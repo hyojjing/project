@@ -1,0 +1,986 @@
+@echo off
+
+ 
+
+Title Windows tools kit
+ 
+
+
+REM 윈도우 진단 스크립트 파일입니다..
+
+ 
+ 
+
+:home
+set m=
+color 0F
+ 
+
+echo --------- window vulnerability tools ---------
+
+echo.
+
+echo 윈도우 자가 취약점 진단
+
+ 
+
+echo.
+
+ 
+
+echo  1. * Identity Management(계정 관리)
+
+ 
+
+echo  2. ** Service Management(서비스 관리)
+
+ 
+
+echo  3. *** Patch Management(패치 관리)
+
+ 
+
+echo  4. **** Security Managemen(보안 관리)
+
+ 
+
+echo  5. ***** Log Management
+
+ 
+
+echo  6.종료
+
+ 
+
+echo.
+
+ 
+
+set /p m=입력 :
+
+ 
+
+
+ 
+
+if "%m%"=="1" goto Identity
+
+ 
+
+if "%m%"=="2" goto Service
+
+ 
+
+if "%m%"=="3" goto Patch
+
+ 
+
+if "%m%"=="4" goto Secu
+
+ 
+
+if "%m%"=="5" goto Log
+
+ 
+
+if "%m%"=="6" goto exit
+
+goto homeerr
+ 
+REM 계정 관련 구역입니다.
+
+ 
+
+:Identity
+COLOR 0F
+set a=
+echo.
+
+echo ******** Welcome to Identity Management ****************
+echo.
+
+echo  1. * account disable(계정 비활성화 여부)
+
+
+echo  2. ** unnecessary account(불 필요 계정 확인)
+
+
+echo  3. *** Account lockout threshold(계정 잠금 임계값)
+
+
+echo  4. **** Passward difficulty policy(패스워드 복잡성 정책 설정)
+
+
+echo  5. ***** decodement policy(해독가능한 암호화 정책 설정)
+
+
+echo  6. ****** MaximumPassword(최대 암호 사용 기간)
+
+
+echo  7. ******* last user name display(마지막 사용자 이름 출력)
+
+
+echo  8. ******** anonymous SID(익명 SID/이름 변환 설정)
+
+
+echo  9. ********* MinimumPassword(최소암호 사용 기간)
+
+
+echo  10. 패치 관련 진단 항목 종료후 메인페이지로 이동...
+
+ 
+
+echo.
+
+ 
+
+set /p a=진단하고싶은 항목 선택 :
+
+ 
+ 
+
+if "%a%"=="1" goto account disable
+
+ 
+if "%a%"=="2" goto unnecessary account
+
+
+if "%a%"=="3" goto threshold
+
+
+if "%a%"=="4" goto diff_pass
+
+
+if "%a%"=="5" goto decodement
+
+
+if "%a%"=="6" goto max_pass
+
+
+if "%a%"=="7" goto last
+
+
+if "%a%"=="8" goto anonymous_SID
+
+
+if "%a%"=="9" goto min_pass
+
+
+if "%a%"=="10" goto main
+ 
+
+goto accounterr
+
+:account disable
+echo.
+ECHO ** 기준 Guest 계정
+ECHO 양호 : Guest 계정이 비활성화 되어 있는 경우
+ECHO 취약 : Guest 계정이 활성화 되어 있는 경우
+
+ECHO.
+
+ECHO ** 현황
+net user guest > NUL
+IF NOT ERRORLEVEL 1 net user guest2 | find/i "활성 계정"
+
+ECHO.
+ECHO ** 결과
+net user guest | find/i "활성 계정" | find/i "예" > NUL
+IF ERRORLEVEL 1 ECHO 양호
+IF NOT ERRORLEVEL 1 (
+  COLOR FC
+  ECHO 취약
+)
+
+echo.
+
+ 
+pause
+
+goto Identity
+
+ 
+:unnecessary account
+ECHO ** 기준 (불필요한 계정 제거)
+ECHO 양호 : 불필요한 계정이 존재하지 않는 경우
+ECHO 취약 : 불필요한 계정이 존재하는 경우
+
+ECHO.
+ECHO ** 현황
+net user | find/v "명령을 잘 실행했습니다."
+
+ECHO.
+ECHO ** 결과
+ECHO 관리자 인터뷰
+
+ 
+pause
+
+
+goto Identity
+ 
+:threshold
+ECHO.
+ECHO ** 기준 계정 장금 임계값
+ECHO 양호 : 계정 잠금 임계값이 5 이하의 값인 경우
+ECHO 취약 : 계정 감금 임계값이 5 초과 값인 경우
+
+ECHO.
+ECHO ** 현황
+net accounts|findstr /I /C:"잠금 임계값"
+
+ECHO.
+ECHO ** 결과
+net accounts | findstr /I /C:"잠금 임계값">threshold.txt
+for /f "tokens=1-3" %%a IN (threshold.txt) do set threshold=%%c
+if %threshold% LEQ 5 ECHO 양호
+if not %threshold% LEQ 5 (
+ COLOR FC
+ ECHO 취약
+)
+del threshold.txt
+ECHO.
+pause
+goto Identity
+
+:diff_pass
+ECHO.
+ECHO ** 기준 암호 복잡성 정책
+ECHO 양호 : 암호 복잡성을 만족해야함 정책이 사용으로 되어있는 경우.
+ECHO 취약 : 암호 복잡성을 만족해야함 정책이 사용 안 함으로 되어있는 경우.
+
+ECHO.
+ECHO ** 현황
+secedit /export /cfg L_S_P.txt
+type L_S_P.txt | find /i "PasswordComplexity"
+
+ECHO.
+ECHO ** 결과
+type L_S_P.txt | find /i "PasswordComplexity" | find "1" >NUL
+if errorlevel 1 (
+ color fc
+ echo 취약
+ del L_S_P.txt
+ pause
+ goto Identity
+)
+if not errorlevel 1 echo 양호
+
+
+del L_S_P.txt
+ECHO.
+pause
+goto Identity
+
+:decodement
+ECHO.
+ECHO ** 기준 해독 가능한 암호화
+ECHO 양호 : 해독 가능한 암호화 정책이 사용 안 함으로 설정되어있는경우
+ECHO 취약 : 해독 가능한 암호화 정책이 사용으로 설정되어있는경우
+
+ECHO.
+ECHO ** 현황
+secedit /export /cfg L_S_P.txt
+type L_S_P.txt | find /i "ClearTextPassword"
+
+ECHO.
+ECHO ** 결과
+type L_S_P.txt | find /i "ClearTextPassword" | find "0" >NUL
+if errorlevel 1 (
+ color fc
+ echo 취약
+ del L_S_P.txt
+ pause
+ goto Identity
+)
+if not errorlevel 1 echo 양호
+
+del L_S_P.txt
+ECHO.
+pause
+goto Identity
+
+:max_pass
+ECHO.
+ECHO ** 기준 최대 암호 사용 기간
+ECHO 양호 : 최대 암호 사용 기간이 90일 이하로 되어있는 경우
+ECHO 취약 : 최대 암호 사용 기간이 설정되지않았거나 90일을 초과하는 경우
+
+ECHO.
+ECHO ** 현황
+secedit /export /cfg L_S_P.txt
+type L_S_P.txt | find /i "MaximumPasswordAge" | find /v "\"
+
+ECHO.
+ECHO ** 결과
+type L_S_P.txt | find /i "MaximumPasswordAge = "> len_pass.txt
+for /f "tokens=1-3" %%a IN (len_pass.txt) do set len_pass=%%c
+if %len_pass% leq 90 echo 양호
+if not %len_pass% leq 90 (
+ color fc
+ echo 취약
+ echo %len_pass%일을 90일 이하로 설정해주세요!!!
+ del len_pass.txt
+ del L_S_P.txt
+ pause
+ goto Identity
+)
+del len_pass.txt
+del L_S_P.txt
+ECHO.
+pause
+goto Identity
+
+:last
+ECHO.
+ECHO ** 기준 마지막 사용자 이름 출력
+ECHO 양호 : 마지막 사용자 이름 표시 안 함이 사용으로 설정되어있는 경우
+ECHO 취약 : 마지막 사용자 이름 표시 안 함이 사용 안 함으로 설정되어있는 경우
+ECHO.
+ECHO ** 현황
+reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\policies\System" | findstr /I "DontDisplayLastUserName"
+
+ECHO.
+ECHO ** 결과
+reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\policies\System" | findstr /I "DontDisplayLastUserName" | find "1">NUL
+if errorlevel 1 (
+ color fc
+ echo 취약
+ pause
+ goto Identity
+)
+if not errorlevel 1 echo 양호
+ECHO.
+pause
+goto Identity
+
+
+:anonymous_SID
+ECHO.
+ECHO ** 기준 익명 SID/이름
+ECHO 양호 : 익명 SID/이름 변환 허용 정책이 사용 안 함 으로 설정 되어 있는 경우
+ECHO 취약 : 익명 SID/이름 변환 허용 정책이 사용으로 설정 되어 있는 경우
+ECHO.
+ECHO ** 현황
+secedit /export /cfg L_S_P.txt
+type L_S_P.txt | find /i "LSAAnonymousNameLookup"
+ECHO.
+ECHO ** 결과
+type L_S_P.txt | find /i "LSAAnonymousNameLookup" | find "0">NUL
+if errorlevel 1 (
+ color fc
+ echo 취약
+ pause
+ goto Identity
+ del L_S_P.txt
+)
+if not errorlevel 1 echo 양호
+del L_S_P.txt
+ECHO.
+pause
+goto Identity
+
+:min_pass
+ECHO.
+ECHO ** 기준 암호 최소 사용 기간
+ECHO 양호 : 패스워드 최소 사용 기간 정책이 1일 경우
+ECHO 취약 : 패스워드 최소 사용 기간 정책이 0으로 설정되어 있는 경우
+ECHO.
+ECHO ** 현황
+secedit /export /cfg L_S_P.txt
+type L_S_P.txt | find /i "MinimumPasswordAge"
+ECHO.
+ECHO ** 결과
+type L_S_P.txt | find /i "MinimumPasswordAge = ">min_pass.txt
+for /f "tokens=1-3" %%a IN (min_pass.txt) do set min_pass=%%c
+if %min_pass% geq 1 echo 양호
+if not %min_pass% geq 1 (
+ color fc
+ echo 취약
+ echo 패스워드 최소 사용 기간을 1일로 설정해주십시오!!!
+ del min_pass.txt
+ del L_S_P.txt
+ pause
+ goto Identity
+)
+del min_pass.txt
+del L_S_P.txt
+ECHO.
+pause
+goto Identity
+
+
+REM 여기서는 서비스 구역
+
+:Service
+COLOR 0F
+set s=
+echo.
+echo ******** Welcome to Service Management ****************
+echo.
+
+echo  1. * 하드 디스크 기본공유 제거 관리
+
+ 
+
+echo  2. ** 최신 서비스팩 설치
+
+ 
+
+echo  3. *** admin_group(관리자 그룹)
+
+ 
+
+echo  4. **** FTP Service (FTP 서비스 구동 확인)
+
+ 
+
+echo  5. 서비스 관련 진단항목 종료후 메인페이지로 이동...
+
+ 
+
+echo.
+
+ 
+
+set /p s=진단하고싶은 항목 선택 :
+
+ 
+ 
+
+if "%s%"=="1" goto autohard
+
+ 
+
+if "%s%"=="2" goto ServicePack
+
+ 
+
+if "%s%"=="3" goto admingroup
+ 
+
+
+if "%s%"=="4" goto activeFTP
+
+ 
+
+if "%s%"=="5" goto main
+
+
+goto serr
+
+
+:autohard
+
+ECHO.
+
+ 
+
+ECHO 기준 하드웨어 기본공유
+
+ECHO 양호 : 레지스트리의 AutoShareServer (winNT: AutoShareWks)가 0이며 기본 공유가 존재하지 않는 경우
+
+ECHO 취약 : 레지스트리의 AutoShareServer (winNT: AutoShareWks)가 1이며 기본 공유가 존재하는 경우
+
+ 
+
+ECHO.
+
+ECHO ** 결과
+reg query "HKLM\SYSTEM\CurrentControlSet\Services\lanmanserver\parameters" | findstr /IC:"AutoShareServer">nul 2>&1
+if %errorlevel% == 0 (
+ reg query "HKLM\SYSTEM\CurrentControlSet\Services\lanmanserver\parameters" /v AutoShareServer |findstr /ic:"0x0"
+ ) else (
+  color fc
+  echo 취약 레지스트리의 AutoShareServer가 1로 설정되어 있습니다.
+  net share | findstr /v "Share IPC% ADMIN% Users"
+ )
+) else (
+ color fc
+ echo 취약 레지스트리의 AutoShareServer 설정이 없습니다.
+ net share | findstr /v "Share IPC% ADMIN% Users"
+)
+
+ECHO.
+
+ 
+
+PAUSE
+
+GOTO Service
+
+ 
+
+:ServicePack
+
+ECHO.
+
+ 
+
+ECHO 기준 서비스 팩
+
+ECHO 양호 : 새로운 위협을 방지하는 최신버전인 경우
+
+ECHO 취약 : 새로운 위협을 방지하는 최신버전인 경우
+
+ 
+ECHO 현황
+
+Winver
+
+ECHO.
+echo ※결과
+echo http://www.microsoft.com/ko-kr/download/servicepack.aspx
+echo 위 홈페이지에서 최신버전을 확인하십시오..
+echo.
+
+PAUSE
+
+GOTO Service
+
+ 
+
+:admingroup
+
+ECHO.
+ECHO 기준 관리자 그룹에서 최소한의 사용자 포함
+
+ECHO 양호 : 관리자 그룹에서 불필요한 사용자가 없는 경우
+
+ECHO 취약 : 관리자 그룹에서 불필요한 사용자가 있는 경우
+
+ 
+
+ECHO.
+ECHO **현황
+ECHO.
+net localgroup administrators
+
+ECHO.
+ECHO ※결과
+ECHO 관리자 인터뷰
+
+PAUSE
+
+GOTO Service
+
+ 
+
+:active_FTP
+
+ECHO.
+
+ 
+
+ECHO 기준 FTP 서비스 구동 점검
+
+ECHO 양호 : FTP 서비스가 비 활성화인 경우
+
+ECHO 취약 : FTP 서비스가 활성화 되어있는 경우
+
+ECHO.
+ECHO **현황 및 결과
+net start | find "Microsoft FTP Service">nul
+IF ERRORLEVEL == 1 ECHO 양호
+IF NOT ERRORLEVEL 1 (
+ color fc
+ echo 취약 FTP 서비스가 구동중입니다!!!
+ echo "실행 + services.msc" 에서 FTP Service를 중지해 주십시오!!!
+)
+ECHO.
+PAUSE
+
+GOTO Service
+
+ 
+
+REM 여기서는 서비스 구역
+
+ 
+
+REM 여기는 패치 구역
+
+:Patch
+COLOR 0F
+set p=
+echo.
+
+echo ******** Welcome to Patch Management ****************
+echo.
+
+echo  1. * security update(취약점 보안 업데이트)
+
+
+echo  2. ** update vaccine(백신 설치)
+
+
+echo  3. 패치 관련 진단 항목 종료후 메인페이지로 이동...
+
+ 
+
+echo.
+
+ 
+
+set /p p=진단하고싶은 항목 선택 :
+
+ 
+ 
+
+if "%p%"=="1" goto securityhotfix
+
+ 
+
+if "%p%"=="2" goto updatevaccine
+
+ 
+
+if "%p%"=="3" goto main
+ 
+
+goto perr
+
+:securityhotfix
+echo.
+
+echo 기준
+echo 양호 : 최신 Hotfix로 업데이트가 반영되어 있는 경우
+echo 취약 : 최신 Hotfix로 업데이트가 반영되지 않은 경우
+echo.
+REM KB4012213,KB4012216은 랜섬웨어 방지하는 HOT FIX
+wmic QFE Get HotFixID,InstalledOn | find "KB4012213"
+if errorlevel 1 (
+ wmic QFE Get HotFixID,InstalledOn | find "KB4012216"
+ if errorlevel 1 (
+  color fc
+  echo 취약 시스템의 최신 Hot fix가 설치 되지않았습니다!!!
+  echo **********
+  echo "즉시 http://technet.microsoft.com/ko-kr/security/" 에서
+  echo 업데이트하십시오!!
+ ) else echo 양호
+)else echo 양호
+
+echo.
+
+
+pause
+
+
+goto Patch
+
+
+:updatevaccine
+echo.
+echo 기준
+echo 양호 : 백신이 설치되어있는 경우
+echo 취약 : 백신프로그램이 설치되어 있지 않은 경우
+echo 위협 : 지속적으로 출현하는 바이러스로 인한 시스템 공격에 대한 우려
+echo.
+echo **결과
+echo 담당자를 통한 바이러스 백신 설치 후 엔진 업데이트
+echo 지속적 관리가 필요하며 확인이 필요하다.
+echo.
+
+pause
+
+
+goto Patch
+
+REM 여기는 패치 구역
+
+ 
+
+ 
+
+ 
+
+:Secu
+COLOR 0F
+set t=
+echo.
+
+echo ******** Welcome to Security Management ****************
+echo.
+
+echo  1. * 파일 및 디렉터리 보호(NTFS 파일 시스템 점검)
+
+
+echo  2. ** 컴퓨터 계정 암호 최대 사용 기간
+
+
+echo  3. 패치 관련 진단 항목 종료후 메인페이지로 이동...
+
+ 
+
+echo.
+
+ 
+
+set /p t=진단하고싶은 항목 선택 :
+
+ 
+ 
+
+if "%t%"=="1" goto NTFS
+
+ 
+
+if "%t%"=="2" goto passmax
+
+ 
+
+if "%t%"=="3" goto main
+ 
+
+goto errsecure
+
+ 
+:NTFS
+ECHO.
+ECHO 기준 NTFS
+ECHO 양호 디스크가 NTFS인 경우
+ECHO 취약 디스크가 NTFS가 아닌 경우
+ECHO.
+ECHO *위협
+ECHO FAT 파일 시스템 사용 시 사용자별 접근 통제가 불가능해
+ECHO 중요정보에 대한 책임 추적성 확보가 어렵다.
+ECHO.
+
+ECHO **결과
+convert c:/fs:ntfs>nul 2>&1 | find "이미">nul
+if errorlevel 1 (
+ echo 양호 드라이브가 "NTFS" 형식입니다.
+)
+if not errorlevel 1 echo 취약 드라이브가 "NTFS" 형식이 아닙니다.
+ 
+
+echo.
+pause
+GOTO Secu
+
+:passmax
+:: DisablePasswordChange 1 = o, 0 = x
+:: MaximumPasswordAge
+ECHO.
+ECHO 기준 컴퓨터 계정 암호 최대 사용 기간
+ECHO 양호 계정 암호 변경 사용 안 함, 계정 암호 최대 사용 기간 90일
+ECHO 취약 위 설정들이 제대로 이루어지지 않았을 때
+ECHO.
+ECHO *위협
+ECHO 무단 공격을 실행해 하나 이상의 컴퓨터 계정의 암호를 추측할수도 있다.
+ECHO.
+
+ECHO **결과
+reg query "HKLM\SYSTEM\CurrentControlSet\Services\Netlogon\Parameters" /v MaximumPasswordAge |findstr /ic:"0x5a" > M_P_A.txt
+for /f "tokens=1-3" %%a IN (M_P_A.txt) do set M_P_A=%%c
+if not errorlevel 1 (
+ echo 양호 컴퓨터 계정 암호 최대 사용기간이 "90일"입니다.
+) else (
+ color fc
+ echo 취약
+ echo "실행 + secpol.msc" 에 가서 로컬정책 > 보안 옵션 > 도메인 구성원
+ echo 컴퓨터 계정암호 최대 사용기간을 "90일"으로 변경하십시오.
+)
+
+reg query "HKLM\SYSTEM\CurrentControlSet\Services\Netlogon\Parameters" /v DisablePasswordChange |findstr /ic:"0x0" > D_P_C.txt
+for /f "tokens=1-3" %%a IN (D_P_C.txt) do set D_P_C=%%c
+if not errorlevel 1 (
+ echo 양호 계정 암호 변경 "사용 안 함"으로 설정 되어 있습니다
+) else (
+ color fc
+ echo 취약
+ echo "실행 + secpol.msc" 에 가서 로컬정책 > 보안 옵션 > 도메인 구성원
+ echo 컴퓨터 계정암호 변경 사항 사용 안 함을 사용 안 함으로 변경하십시오.
+)
+del D_P_C.txt
+del M_P_A.txt
+echo.
+pause
+GOTO Secu
+
+ 
+
+:Log
+COLOR 0F
+set l=
+echo.
+
+echo ******** Welcome to LOG Management **********************
+
+echo.
+
+
+echo  1. * 원격 엑세스 서비스 관리(RemoteRegistry 서비스)
+
+
+echo  2. ** 이벤트 로그 파일 용량 및 보관 방식 설정 점검
+
+
+echo  3. 패치 관련 진단 항목 종료후 메인페이지로 이동...
+
+ 
+
+echo.
+
+ 
+
+set /p l=진단하고싶은 항목 선택 :
+
+ 
+ 
+
+if "%l%"=="1" goto Remote
+
+ 
+
+if "%l%"=="2" goto event
+
+ 
+
+if "%l%"=="3" goto home
+ 
+
+goto lerr
+
+
+:Remote
+
+REM 서비스는 START 4 자동(지연된시작) 3 자동 2 수동 1 사용안함
+
+ECHO.
+ECHO 기준 REMOTE의 비활성화
+ECHO 양호 REMOTE가 비활성화 되어있는 경우
+ECHO 취약 REMOTE가 활성화 되어있는 경우
+ECHO.
+ECHO *위협
+ECHO 원격 레지스트리 서비스는 엑세스에 대한 인증이 취약. 따라서 관리자 계정 외
+ECHO 다른 계정들에게도 원격 레지스트리 엑세스를 허용할 우려가있음.
+ECHO 그러므로, 원격에서 레지스트리를 통해 임의의 파일을 실행 할 우려가 있다.
+ECHO 또한, 서비스 거부공격(DoS)에 이용 될수 있다.
+ECHO.
+
+ECHO **현황
+reg query "HKLM\SYSTEM\CurrentControlset\Services\RemoteRegistry" /v Start |findstr /ic:"0x4" > rmot.txt
+for /f "tokens=1-3" %%a IN (rmot.txt) do set rmot_start=%%c
+if not errorlevel 1 (
+ echo 양호
+) else (
+ color fc
+ echo 취약 Remote 서비스가 활성화 되어있습니다!!!
+ echo "실행 + services.msc"에서 RemoteRegistry를 사용안함으로 설정하십시오!!
+)
+del rmot.txt
+echo.
+pause
+GOTO log
+
+:event
+
+ECHO.
+ECHO 기준 이벤트 로그 파일 용량 및 보관 방식 설정 점검
+ECHO 양호 최대 로그 크기가 10,204KB, 90일 이후 이벤트 덮어씀 설정
+ECHO 취약 이벤트 로그 크기가적당하지 않을경우
+ECHO.
+ECHO *위협
+echo 최대 보존 크기를 초과하는경우 이벤트가 덮어쓰여질수있다
+
+ECHO **현황 로그 최대크기
+reg query "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\EventLog\Application" /v MaxSize |findstr /ic:"0xa00000" > max_size.txt
+ECHO ※결과
+
+for /f "tokens=1-3" %%a IN (max_size.txt) do set max_size=%%c
+if not errorlevel 1 (
+ echo 양호
+ echo 최대 이벤트 로그 크기인 %max_size%입니다
+) else (
+ color fc
+ echo 취약 최대 로그 크기가 10,240KB가 아닙니다!!
+ echo "실행 + eventvwr.msc" 10,240KB로 수정해주시기 바랍니다!!
+)
+echo.
+ECHO **현황 오래된 이벤트 먼저 덮어쓰기
+reg query "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\EventLog\Application" /v Retention | findstr /ic:"0x0" > retention.txt
+ECHO ※결과
+for /f "tokens=1-3" %%a IN (retention.txt) do set retention_size=%%c
+if not errorlevel 1 (
+ echo 양호
+ echo 오래된 이벤트 먼저 덮어쓰기
+) else (
+ color fc
+ echo 취약
+ echo 오래된 이벤트 먼저 덮어쓰기가 아닙니다!!
+ echo "실행 + eventvwr.msc"에서 수정해주시기바랍니다!!
+)
+
+del retention.txt
+del max_size.txt
+echo.
+pause
+GOTO log
+
+
+REM 에러존.
+
+:homeerr
+if "%m%"=="" set m=공백
+echo.
+echo *** %m%는(은) 올바르지않습니다.
+echo *** 보기에서 골라주세요
+set m=공백
+pause
+goto home
+
+:accounterr
+if "%a%"=="" set a=공백
+echo.
+echo *** %a%는(은) 올바르지않습니다.
+echo *** 보기에서 골라주세요
+set a=공백
+pause
+goto Identity
+
+ 
+
+:serr
+if "%s%"=="" set s=공백
+echo.
+echo *** %s%는(은) 올바르지않습니다.
+echo *** 보기에서 골라주세요
+set s=공백
+pause
+goto Service
+
+:perr
+if "%p%"=="" set p=공백
+echo.
+echo *** %p%는(은) 올바르지않습니다.
+echo *** 보기에서 골라주세요
+set p=공백
+pause
+goto Patch
+
+:lerr
+if "%l%"=="" set l=공백
+echo.
+echo *** %l%는(은) 올바르지않습니다.
+echo *** 보기에서 골라주세요
+set l=공백
+pause
+goto Log
+
+:errsecure
+if "%l%"=="" set l=공백
+echo.
+echo *** %l%는(은) 올바르지않습니다.
+echo *** 보기에서 골라주세요
+set l=공백
+pause
+goto Log
+
+REM main home 복귀
+:main
+ 
+
+goto home
+
+:exit 
